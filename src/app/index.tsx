@@ -1,43 +1,26 @@
 import { FlatList, StatusBar, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ProductCard, type Product } from '@/components/product-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { ProductCard, type Product } from '@/components/product-card';
+import { useEffect, useState } from 'react';
 
-// Replace the "image" URLs below with your own product photos hosted online.
-const PRODUCTS: Product[] = [
-  {
-    id: '1',
-    name: 'The Little Prince',
-    category: 'Fiction',
-    price: '185',
-    image: 'https://picsum.photos/seed/little-prince/200/260',
-  },
-  {
-    id: '2',
-    name: 'Secrets of the Millionaire Mind',
-    category: 'Business',
-    price: '245',
-    image: 'https://picsum.photos/seed/millionaire-mind/200/260',
-  },
-  {
-    id: '3',
-    name: 'Totto-chan',
-    category: 'Biography',
-    price: '220',
-    image: 'https://picsum.photos/seed/totto-chan/200/260',
-  },
-  {
-    id: '4',
-    name: 'Think and Grow Rich',
-    category: 'Self-Help',
-    price: '199',
-    image: 'https://picsum.photos/seed/think-grow-rich/200/260',
-  },
-];
+const PRODUCTS_URL = 'https://raw.githubusercontent.com/Archari2517/MyAppArchari/refs/heads/main/Products.json';
 
 export default function HomeScreen() {
+  const [products, setProducts] = useState<Product[]>([]);
+
+useEffect(() => {
+  async function loadProducts() {
+    const response = await fetch(PRODUCTS_URL);
+    const data = await response.json();
+
+    setProducts(data);
+  }
+
+  void loadProducts();
+}, []);
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FAF3EA" />
@@ -83,10 +66,10 @@ export default function HomeScreen() {
       <FlatList
         style={styles.list}
         contentContainerStyle={styles.shelfArea}
-        data={PRODUCTS}
+        data={products}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={
-          <ThemedText style={styles.sectionLabel}>All Products ({PRODUCTS.length})</ThemedText>
+          <ThemedText style={styles.sectionLabel}>All Products ({products.length})</ThemedText>
         }
         renderItem={({ item }) => <ProductCard product={item} />}
       />
