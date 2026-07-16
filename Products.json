@@ -1,0 +1,32 @@
+[
+    {
+        "id": "1",
+        "name": "The Little Prince",
+        "category": "Fiction",
+        "price": "185",
+        "image": "https://picsum.photos/seed/little-prince/200/260"
+    },
+    {
+        "id": "2",
+        "name": "Secrets of the Millionaire Mind",
+        "category": "Business",
+        "price": "245",
+        "image": "https://picsum.photos/seed/millionaire-mind/200/260"
+    },
+    {
+        "id": "3",
+        "name": "Totto-chan",
+        "category": "Biography",
+        "price": "220",
+        "image": "https://picsum.photos/seed/totto-chan/200/260"
+    },
+    {
+        "id": "4",
+        "name": "Think and Grow Rich",
+        "category": "Self-Help",
+        "price": "199",
+        "image": "https://picsum.photos/seed/think-grow-rich/200/260"
+    }
+
+]
+
