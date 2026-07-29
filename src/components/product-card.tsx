@@ -1,95 +1,142 @@
-import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import React from 'react';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-
-export type Product = {
-  id: string;
-  name: string;
+export interface Product {
+  id: number;
+  book_title: string;
+  author: string;
+  price: number;
+  stock_qty: number;
   category: string;
-  price: string;
-  image: string;
-};
+  cover_image: string;
+}
 
-type ProductCardProps = {
+interface ProductCardProps {
   product: Product;
-};
+  onEdit?: (product: Product) => void;
+  onDelete?: (id: number) => void;
+}
 
-export function ProductCard({ product }: ProductCardProps) {
+export function ProductCard({ product, onEdit, onDelete }: ProductCardProps) {
   return (
-    <View style={styles.productCard}>
-      <View style={styles.productCover}>
-        <Image
-          source={{ uri: product.image }}
-          style={styles.productCoverImage}
-          resizeMode="cover"
-        />
+    <View style={styles.card}>
+      {/* รูปภาพปกหนังสือ */}
+      <Image 
+        source={{ uri: product.cover_image }} 
+        style={styles.coverImage}
+        resizeMode="cover"
+      />
+
+      {/* ข้อความและรายละเอียด */}
+      <View style={styles.infoContainer}>
+        <Text style={styles.category}>{product.category}</Text>
+        <Text style={styles.title} numberOfLines={1}>
+          {product.book_title}
+        </Text>
+        <Text style={styles.author} numberOfLines={1}>
+          By {product.author}
+        </Text>
+        
+        <View style={styles.footer}>
+          <Text style={styles.price}>฿{product.price}</Text>
+          <Text style={styles.stock}>Stock: {product.stock_qty}</Text>
+        </View>
+
+        {/* ปุ่มแก้ไข และ ปุ่มลบ */}
+        <View style={styles.actionRow}>
+          {onEdit && (
+            <TouchableOpacity style={styles.editBtn} onPress={() => onEdit(product)}>
+              <Text style={styles.btnText}>✏️ แก้ไข</Text>
+            </TouchableOpacity>
+          )}
+          {onDelete && (
+            <TouchableOpacity style={styles.deleteBtn} onPress={() => onDelete(product.id)}>
+              <Text style={styles.deleteBtnText}>🗑️ ลบ</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
-      <View style={styles.productInfo}>
-        <ThemedText style={styles.productTag}>{product.category}</ThemedText>
-        <ThemedText style={styles.productTitle}>{product.name}</ThemedText>
-        <ThemedText style={styles.productPrice}>${product.price}</ThemedText>
-      </View>
-      <TouchableOpacity style={styles.productMore}>
-        <ThemedText style={styles.productMoreIcon}>⋮</ThemedText>
-      </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  productCard: {
+  card: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E8DCCB',
+    borderRadius: 12,
     padding: 12,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E8DCCB',
     alignItems: 'center',
-    gap: 12,
   },
-  productCover: {
-    width: 52,
-    height: 68,
+  coverImage: {
+    width: 65,
+    height: 90,
     borderRadius: 8,
-    backgroundColor: '#F3E4D3',
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
+    backgroundColor: '#FAF3EA',
   },
-  productCoverImage: {
-    width: '100%',
-    height: '100%',
-  },
-  productInfo: {
+  infoContainer: {
     flex: 1,
+    marginLeft: 14,
   },
-  productTag: {
-    fontSize: 10,
+  category: {
+    fontSize: 11,
     fontWeight: '700',
     color: '#B4693E',
     textTransform: 'uppercase',
-    marginBottom: 3,
   },
-  productTitle: {
-    fontSize: 15,
+  title: {
+    fontSize: 16,
     fontWeight: '700',
     color: '#4A3628',
-    marginBottom: 2,
+    marginVertical: 2,
   },
-  productPrice: {
-    fontSize: 14,
+  author: {
+    fontSize: 13,
+    color: '#9C8776',
+    marginBottom: 4,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  price: {
+    fontSize: 16,
     fontWeight: '700',
     color: '#6B4A34',
   },
-  productMore: {
-    width: 28,
-    height: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
+  stock: {
+    fontSize: 12,
+    color: '#8C6A52',
   },
-  productMoreIcon: {
-    fontSize: 18,
-    color: '#B5A395',
+  actionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  editBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    backgroundColor: '#F3E4D3',
+    borderRadius: 6,
+  },
+  deleteBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    backgroundColor: '#FDE8E8',
+    borderRadius: 6,
+  },
+  btnText: {
+    fontSize: 11,
+    color: '#6B4A34',
+    fontWeight: '600',
+  },
+  deleteBtnText: {
+    fontSize: 11,
+    color: '#D9534F',
+    fontWeight: '600',
   },
 });

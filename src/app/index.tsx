@@ -1,4 +1,4 @@
-import { FlatList, StatusBar, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, Modal, Platform, StatusBar, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ProductCard, type Product } from '@/components/product-card';
@@ -6,21 +6,151 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useEffect, useState } from 'react';
 
-const PRODUCTS_URL = 'https://raw.githubusercontent.com/Archari2517/MyAppArchari/refs/heads/main/Products.json';
+const PRODUCTS_URL = 'http://119.59.102.161:3068/api/Inventory';
 
 export default function HomeScreen() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
-useEffect(() => {
-  async function loadProducts() {
-    const response = await fetch(PRODUCTS_URL);
-    const data = await response.json();
+  // State สำหรับฟอร์ม
+  const [bookTitle, setBookTitle] = useState('');
+  const [author, setAuthor] = useState('');
+  const [price, setPrice] = useState('');
+  const [stockQty, setStockQty] = useState('');
+  const [category, setCategory] = useState('');
+  const [coverImage, setCoverImage] = useState('');
 
-    setProducts(data);
-  }
+  // ฟังก์ชันดึงข้อมูล
+  const loadProducts = async () => {
+    try {
+      const response = await fetch(PRODUCTS_URL, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      });
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        setProducts(data);
+      }
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    }
+  };
 
-  void loadProducts();
-}, []);
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
+  // ล้างค่าในฟอร์ม
+  const resetForm = () => {
+    setBookTitle('');
+    setAuthor('');
+    setPrice('');
+    setStockQty('');
+    setCategory('');
+    setCoverImage('');
+    setEditingProduct(null);
+  };
+
+  // เปิด Modal สำหรับเพิ่มหนังสือใหม่
+  const handleOpenAdd = () => {
+    resetForm();
+    setModalVisible(true);
+  };
+
+  // เปิด Modal สำหรับแก้ไขหนังสือ
+  const handleOpenEdit = (product: Product) => {
+    setEditingProduct(product);
+    setBookTitle(product.book_title);
+    setAuthor(product.author);
+    setPrice(product.price.toString());
+    setStockQty(product.stock_qty.toString());
+    setCategory(product.category);
+    setCoverImage(product.cover_image);
+    setModalVisible(true);
+  };
+
+  // แจ้งเตือนข้อความ (รองรับทั้ง Web และ App มือถือ)
+  const showAlert = (title: string, message: string) => {
+    if (Platform.OS === 'web') {
+      window.alert(`${title}: ${message}`);
+    } else {
+      Alert.alert(title, message);
+    }
+  };
+
+  // บันทึกข้อมูล (POST เมื่อเพิ่ม / PUT เมื่อแก้ไข)
+  const handleSave = async () => {
+    if (!bookTitle) {
+      showAlert('แจ้งเตือน', 'กรุณากรอกชื่อหนังสือ');
+      return;
+    }
+
+    const payload = {
+      book_title: bookTitle,
+      author,
+      price: parseFloat(price) || 0,
+      stock_qty: parseInt(stockQty) || 0,
+      category,
+      cover_image: coverImage || 'https://picsum.photos/200/260',
+    };
+
+    try {
+      if (editingProduct) {
+        await fetch(`${PRODUCTS_URL}/${editingProduct.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } else {
+        await fetch(PRODUCTS_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      }
+      setModalVisible(false);
+      resetForm();
+      loadProducts();
+    } catch (error) {
+      console.error('Save error:', error);
+    }
+  };
+
+  // ฟังก์ชันลบข้อมูล (แก้ไขให้รองรับ Web และ Mobile)
+  const executeDelete = async (id: number) => {
+    try {
+      const response = await fetch(`${PRODUCTS_URL}/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        loadProducts();
+      } else {
+        console.error('Delete failed');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+    }
+  };
+
+  const handleDelete = (id: number) => {
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('คุณต้องการลบหนังสือเล่มนี้ใช่หรือไม่?');
+      if (confirmed) {
+        executeDelete(id);
+      }
+    } else {
+      Alert.alert('ยืนยันการลบ', 'คุณต้องการลบหนังสือเล่มนี้ใช่หรือไม่?', [
+        { text: 'ยกเลิก', style: 'cancel' },
+        {
+          text: 'ลบข้อมูล',
+          style: 'destructive',
+          onPress: () => executeDelete(id),
+        },
+      ]);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FAF3EA" />
@@ -55,8 +185,9 @@ useEffect(() => {
         </TouchableOpacity>
       </View>
 
+      {/* ปุ่มกดเพิ่มสินค้า */}
       <View style={styles.addRow}>
-        <TouchableOpacity style={styles.addButton}>
+        <TouchableOpacity style={styles.addButton} onPress={handleOpenAdd}>
           <ThemedText style={styles.addButtonIcon}>＋</ThemedText>
           <ThemedText style={styles.addButtonText}>Add Product</ThemedText>
         </TouchableOpacity>
@@ -67,11 +198,17 @@ useEffect(() => {
         style={styles.list}
         contentContainerStyle={styles.shelfArea}
         data={products}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.id.toString()}
         ListHeaderComponent={
           <ThemedText style={styles.sectionLabel}>All Products ({products.length})</ThemedText>
         }
-        renderItem={({ item }) => <ProductCard product={item} />}
+        renderItem={({ item }) => (
+          <ProductCard 
+            product={item} 
+            onEdit={handleOpenEdit} 
+            onDelete={handleDelete} 
+          />
+        )}
       />
 
       {/* Bottom Navigation */}
@@ -81,7 +218,7 @@ useEffect(() => {
           <ThemedText style={styles.navText}>Home</ThemedText>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={handleOpenAdd}>
           <ThemedText style={styles.navIcon}>➕</ThemedText>
           <ThemedText style={styles.navText}>Add</ThemedText>
         </TouchableOpacity>
@@ -98,26 +235,74 @@ useEffect(() => {
           <ThemedText style={styles.navText}>Settings</ThemedText>
         </TouchableOpacity>
       </ThemedView>
+
+      {/* Modal ป๊อปอัปสำหรับ เพิ่ม/แก้ไข หนังสือ */}
+      <Modal visible={modalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <ThemedText style={styles.modalTitle}>
+              {editingProduct ? '✏️ Edit Book' : '＋ Add New Book'}
+            </ThemedText>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Book Title (ชื่อหนังสือ)"
+              value={bookTitle}
+              onChangeText={setBookTitle}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Author (ผู้แต่ง)"
+              value={author}
+              onChangeText={setAuthor}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Category (หมวดหมู่)"
+              value={category}
+              onChangeText={setCategory}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Price (ราคา)"
+              keyboardType="numeric"
+              value={price}
+              onChangeText={setPrice}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Stock Quantity (จำนวนสต็อก)"
+              keyboardType="numeric"
+              value={stockQty}
+              onChangeText={setStockQty}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Cover Image URL (ลิงก์รูปปก)"
+              value={coverImage}
+              onChangeText={setCoverImage}
+            />
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}>
+                <ThemedText style={styles.cancelBtnText}>Cancel</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
+                <ThemedText style={styles.saveBtnText}>Save</ThemedText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
-
-// ---- Warm Reading Room palette ----
-// Background cream : #FAF3EA
-// Card white       : #FFFFFF
-// Deep leather     : #6B4A34
-// Warm cocoa       : #8C6A52
-// Soft tan border  : #E8DCCB
-// Accent (spine)   : #B4693E
-// Text ink         : #4A3628
-// Muted text       : #9C8776
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FAF3EA',
   },
-  // Header Styles
   header: {
     paddingVertical: 14,
     flexDirection: 'row',
@@ -164,7 +349,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#FAF3EA',
   },
-  // Search & Filter Styles
   searchContainer: {
     flexDirection: 'row',
     paddingHorizontal: 20,
@@ -237,7 +421,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
   },
-  // Content area
   list: {
     flex: 1,
   },
@@ -252,7 +435,6 @@ const styles = StyleSheet.create({
     color: '#8C6A52',
     marginBottom: 10,
   },
-  // Bottom Navigation Styles
   bottomNav: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
@@ -294,5 +476,59 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#B4693E',
     fontWeight: '700',
+  },
+  
+  // Style ของ Modal Pop-up
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  modalContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#4A3628',
+    marginBottom: 14,
+  },
+  input: {
+    backgroundColor: '#FAF3EA',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    height: 42,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#E8DCCB',
+    color: '#4A3628',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 10,
+  },
+  cancelBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  cancelBtnText: {
+    color: '#8C6A52',
+    fontWeight: '600',
+  },
+  saveBtn: {
+    backgroundColor: '#B4693E',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+  },
+  saveBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 });
