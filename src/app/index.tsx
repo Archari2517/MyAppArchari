@@ -1,17 +1,47 @@
-import { Alert, FlatList, Modal, Platform, StatusBar, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Image, Modal, Platform, StatusBar, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 
 import { ProductCard, type Product } from '@/components/product-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useEffect, useState } from 'react';
+import { API_BASE_URL, useAuth } from '@/context/auth-context';
+import { useEffect, useRef, useState } from 'react';
 
-const PRODUCTS_URL = 'http://119.59.102.161:3068/api/Inventory';
+const PRODUCTS_URL = `${API_BASE_URL}/Inventory`;
+const CATEGORIES_URL = `${PRODUCTS_URL}/categories`;
 
 export default function HomeScreen() {
+  const { user, isAdmin, isLoading: authLoading, logout } = useAuth();
+
+  // ถ้ายังไม่ได้ login ให้เด้งไปหน้า login (รอจนกว่าจะเช็ค session เสร็จก่อน)
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace('/login');
+    }
+  }, [authLoading, user]);
+
   const [products, setProducts] = useState<Product[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+
+  // เก็บสถานะกรณีโหลดรูปโปรไฟล์จาก database ไม่สำเร็จ (เช่น ลิงก์เสีย) เพื่อสลับไปใช้ avatar สำรอง
+  const [avatarError, setAvatarError] = useState(false);
+  useEffect(() => {
+    setAvatarError(false);
+  }, [user?.user_img]);
+
+  // State สำหรับค้นหา / กรอง (ทำงานที่ backend)
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [categories, setCategories] = useState<string[]>([]);
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  // ค่าชั่วคราวขณะแก้ในหน้าต่างตัวกรอง (ยังไม่ apply จนกว่าจะกด "ใช้ตัวกรอง")
+  const [draftCategory, setDraftCategory] = useState('');
+  const [draftMinPrice, setDraftMinPrice] = useState('');
+  const [draftMaxPrice, setDraftMaxPrice] = useState('');
 
   // State สำหรับฟอร์ม
   const [bookTitle, setBookTitle] = useState('');
@@ -21,10 +51,28 @@ export default function HomeScreen() {
   const [category, setCategory] = useState('');
   const [coverImage, setCoverImage] = useState('');
 
-  // ฟังก์ชันดึงข้อมูล
-  const loadProducts = async () => {
+  // ฟังก์ชันดึงข้อมูล (ส่ง search/category/price ไปกรองที่ backend)
+  const loadProducts = async (opts?: {
+    search?: string;
+    category?: string;
+    minPrice?: string;
+    maxPrice?: string;
+  }) => {
+    const search = opts?.search ?? searchQuery;
+    const cat = opts?.category ?? selectedCategory;
+    const min = opts?.minPrice ?? minPrice;
+    const max = opts?.maxPrice ?? maxPrice;
+
+    const params = new URLSearchParams();
+    if (search.trim()) params.append('search', search.trim());
+    if (cat.trim()) params.append('category', cat.trim());
+    if (min.trim()) params.append('minPrice', min.trim());
+    if (max.trim()) params.append('maxPrice', max.trim());
+
+    const url = params.toString() ? `${PRODUCTS_URL}?${params.toString()}` : PRODUCTS_URL;
+
     try {
-      const response = await fetch(PRODUCTS_URL, {
+      const response = await fetch(url, {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -39,9 +87,71 @@ export default function HomeScreen() {
     }
   };
 
+  const loadCategories = async () => {
+    try {
+      const response = await fetch(CATEGORIES_URL);
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        setCategories(data);
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
   useEffect(() => {
-    loadProducts();
-  }, []);
+    if (user) {
+      loadProducts();
+      loadCategories();
+    }
+  }, [user]);
+
+  // ดีเลย์การค้นหา 400ms หลังหยุดพิมพ์ ก่อนยิง API (กันยิงถี่เกินไป)
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleSearchChange = (text: string) => {
+    setSearchQuery(text);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      loadProducts({ search: text });
+    }, 400);
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    loadProducts({ search: '' });
+  };
+
+  // เปิดหน้าต่างตัวกรอง (โหลดค่าปัจจุบันมาเป็นค่าตั้งต้นในฟอร์ม)
+  const openFilterModal = () => {
+    setDraftCategory(selectedCategory);
+    setDraftMinPrice(minPrice);
+    setDraftMaxPrice(maxPrice);
+    setFilterModalVisible(true);
+  };
+
+  // กดใช้ตัวกรอง
+  const applyFilters = () => {
+    setSelectedCategory(draftCategory);
+    setMinPrice(draftMinPrice);
+    setMaxPrice(draftMaxPrice);
+    setFilterModalVisible(false);
+    loadProducts({ category: draftCategory, minPrice: draftMinPrice, maxPrice: draftMaxPrice });
+  };
+
+  // ล้างตัวกรองทั้งหมด
+  const resetFilters = () => {
+    setDraftCategory('');
+    setDraftMinPrice('');
+    setDraftMaxPrice('');
+    setSelectedCategory('');
+    setMinPrice('');
+    setMaxPrice('');
+    setFilterModalVisible(false);
+    loadProducts({ category: '', minPrice: '', maxPrice: '' });
+  };
+
+  const activeFilterCount = (selectedCategory ? 1 : 0) + (minPrice ? 1 : 0) + (maxPrice ? 1 : 0);
 
   // ล้างค่าในฟอร์ม
   const resetForm = () => {
@@ -151,21 +261,75 @@ export default function HomeScreen() {
     }
   };
 
+  // ระหว่างเช็ค session หรือกำลังจะเด้งไปหน้า login ให้แสดง loading เฉยๆ
+  if (authLoading || !user) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FAF3EA" />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#B4693E" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FAF3EA" />
 
       {/* Top Navigation */}
       <ThemedView style={styles.header}>
-        <TouchableOpacity style={styles.menuButton}>
-          <ThemedText style={styles.menuIcon}>☰</ThemedText>
-        </TouchableOpacity>
-        <View style={styles.titleWrap}>
-          <ThemedText style={styles.headerEyebrow}>MY STORE</ThemedText>
-          <ThemedText style={styles.headerTitle}>Product Catalog</ThemedText>
+        <View style={styles.headerLeft}>
+          <View style={styles.logoBox}>
+            <ThemedText style={styles.logoIcon}>📖</ThemedText>
+          </View>
+          <View style={styles.titleWrap}>
+            <ThemedText style={styles.headerTitle}>MY APP Archari</ThemedText>
+            <View style={styles.userRow}>
+              <ThemedText style={styles.headerSubtitle} numberOfLines={1}>
+                {user.user_name}
+              </ThemedText>
+              <View
+                style={[
+                  styles.roleBadge,
+                  isAdmin ? styles.roleBadgeAdmin : styles.roleBadgeUser,
+                ]}
+              >
+                <ThemedText style={styles.roleBadgeText}>
+                  {isAdmin ? '👑 Admin' : '👤 User'}
+                </ThemedText>
+              </View>
+            </View>
+          </View>
         </View>
-        <TouchableOpacity style={styles.profileButton}>
-          <ThemedText style={styles.profileIcon}>👤</ThemedText>
+
+        {/* รูปโปรไฟล์: ดึงจาก database (user.user_img) เสมอ ไม่ว่าจะเป็น user หรือ admin
+            ถ้าไม่มีรูป หรือรูปโหลดไม่สำเร็จ จะ fallback ไปใช้ avatar อัตโนมัติจากตัวอักษรแรกของชื่อ */}
+        <TouchableOpacity
+          style={[styles.profileButton, isAdmin ? styles.profileButtonAdmin : styles.profileButtonUser]}
+          onPress={() => router.push('/profile')}
+          activeOpacity={0.75}
+        >
+          {user.user_img && !avatarError ? (
+            <Image
+              source={{ uri: user.user_img }}
+              style={styles.profileImage}
+              onError={() => setAvatarError(true)}
+            />
+          ) : (
+            <View style={styles.profileFallback}>
+              <ThemedText style={styles.profileFallbackText}>
+                {user.user_name?.trim()?.charAt(0)?.toUpperCase() || '?'}
+              </ThemedText>
+            </View>
+          )}
+          {isAdmin && (
+            <View style={styles.profileCrown}>
+              <ThemedText style={styles.profileCrownIcon}>👑</ThemedText>
+            </View>
+          )}
         </TouchableOpacity>
       </ThemedView>
 
@@ -175,23 +339,39 @@ export default function HomeScreen() {
           <ThemedText style={styles.searchIcon}>🔍</ThemedText>
           <TextInput
             style={styles.searchInput}
-            placeholder="Search products, categories..."
+            placeholder="Search by title or category..."
             placeholderTextColor="#B5A395"
-            editable={true}
+            value={searchQuery}
+            onChangeText={handleSearchChange}
+            onSubmitEditing={() => loadProducts({ search: searchQuery })}
+            returnKeyType="search"
+            autoCapitalize="none"
           />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
+              <ThemedText style={styles.clearIcon}>✕</ThemedText>
+            </TouchableOpacity>
+          )}
         </View>
-        <TouchableOpacity style={styles.filterButton}>
+        <TouchableOpacity style={styles.filterButton} onPress={openFilterModal}>
           <ThemedText style={styles.filterIcon}>⚲</ThemedText>
+          {activeFilterCount > 0 && (
+            <View style={styles.filterBadge}>
+              <ThemedText style={styles.filterBadgeText}>{activeFilterCount}</ThemedText>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 
-      {/* ปุ่มกดเพิ่มสินค้า */}
-      <View style={styles.addRow}>
-        <TouchableOpacity style={styles.addButton} onPress={handleOpenAdd}>
-          <ThemedText style={styles.addButtonIcon}>＋</ThemedText>
-          <ThemedText style={styles.addButtonText}>Add Product</ThemedText>
-        </TouchableOpacity>
-      </View>
+      {/* ปุ่มกดเพิ่มสินค้า (เฉพาะ Admin เท่านั้น) */}
+      {isAdmin && (
+        <View style={styles.addRow}>
+          <TouchableOpacity style={styles.addButton} onPress={handleOpenAdd}>
+            <ThemedText style={styles.addButtonIcon}>＋</ThemedText>
+            <ThemedText style={styles.addButtonText}>Add Product</ThemedText>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Product List */}
       <FlatList
@@ -200,13 +380,29 @@ export default function HomeScreen() {
         data={products}
         keyExtractor={(item) => item.id.toString()}
         ListHeaderComponent={
-          <ThemedText style={styles.sectionLabel}>All Products ({products.length})</ThemedText>
+          <ThemedText style={styles.sectionLabel}>
+            {searchQuery || activeFilterCount > 0
+              ? `Search Results (${products.length})`
+              : `All Products (${products.length})`}
+          </ThemedText>
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <ThemedText style={styles.emptyIcon}>📭</ThemedText>
+            <ThemedText style={styles.emptyText}>
+              {searchQuery
+                ? `ไม่พบสินค้าที่ตรงกับ "${searchQuery}"`
+                : activeFilterCount > 0
+                ? 'ไม่พบสินค้าที่ตรงกับตัวกรองที่เลือก'
+                : 'ยังไม่มีสินค้า'}
+            </ThemedText>
+          </View>
         }
         renderItem={({ item }) => (
-          <ProductCard 
-            product={item} 
-            onEdit={handleOpenEdit} 
-            onDelete={handleDelete} 
+          <ProductCard
+            product={item}
+            onEdit={isAdmin ? handleOpenEdit : undefined}
+            onDelete={isAdmin ? handleDelete : undefined}
           />
         )}
       />
@@ -218,16 +414,17 @@ export default function HomeScreen() {
           <ThemedText style={styles.navText}>Home</ThemedText>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navItem} onPress={handleOpenAdd}>
-          <ThemedText style={styles.navIcon}>➕</ThemedText>
-          <ThemedText style={styles.navText}>Add</ThemedText>
-        </TouchableOpacity>
+        {isAdmin && (
+          <TouchableOpacity style={styles.navItem} onPress={handleOpenAdd}>
+            <ThemedText style={styles.navIcon}>➕</ThemedText>
+            <ThemedText style={styles.navText}>Add</ThemedText>
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity style={styles.navItemActive}>
-          <View style={styles.navActivePill}>
-            <ThemedText style={styles.navIconActive}>🗂️</ThemedText>
-          </View>
-          <ThemedText style={styles.navTextActive}>Category</ThemedText>
+          <ThemedText style={styles.navIconActive}>🗂️</ThemedText>
+          <ThemedText style={styles.navTextActive}>Product</ThemedText>
+          <View style={styles.navActiveDot} />
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.navItem}>
@@ -294,66 +491,220 @@ export default function HomeScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Modal ตัวกรอง: category + ช่วงราคา */}
+      <Modal visible={filterModalVisible} animationType="slide" transparent>
+        <View style={styles.filterOverlay}>
+          <View style={styles.filterSheet}>
+            <View style={styles.sheetHandle} />
+
+            <View style={styles.sheetHeaderRow}>
+              <ThemedText style={styles.sheetTitle}>Filter</ThemedText>
+              <TouchableOpacity
+                style={styles.sheetCloseButton}
+                onPress={() => setFilterModalVisible(false)}
+              >
+                <ThemedText style={styles.sheetCloseIcon}>✕</ThemedText>
+              </TouchableOpacity>
+            </View>
+
+            <ThemedText style={styles.filterLabel}>CATEGORY</ThemedText>
+            <View style={styles.categoryChipsRow}>
+              <TouchableOpacity
+                style={[styles.categoryChip, draftCategory === '' && styles.categoryChipActive]}
+                onPress={() => setDraftCategory('')}
+              >
+                <ThemedText
+                  style={[styles.categoryChipText, draftCategory === '' && styles.categoryChipTextActive]}
+                >
+                  ทั้งหมด
+                </ThemedText>
+              </TouchableOpacity>
+              {categories.map((cat) => (
+                <TouchableOpacity
+                  key={cat}
+                  style={[styles.categoryChip, draftCategory === cat && styles.categoryChipActive]}
+                  onPress={() => setDraftCategory(cat)}
+                >
+                  <ThemedText
+                    style={[styles.categoryChipText, draftCategory === cat && styles.categoryChipTextActive]}
+                  >
+                    {cat}
+                  </ThemedText>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <ThemedText style={styles.filterLabel}>PRICE RANGE</ThemedText>
+            <View style={styles.priceRow}>
+              <View style={[styles.priceInputWrap, styles.priceInput]}>
+                <ThemedText style={styles.priceLabel}>ต่ำสุด</ThemedText>
+                <View style={styles.priceInputField}>
+                  <ThemedText style={styles.priceCurrency}>฿</ThemedText>
+                  <TextInput
+                    style={styles.priceTextInput}
+                    placeholder="0"
+                    placeholderTextColor="#B5A395"
+                    keyboardType="numeric"
+                    value={draftMinPrice}
+                    onChangeText={setDraftMinPrice}
+                  />
+                </View>
+              </View>
+              <View style={[styles.priceInputWrap, styles.priceInput]}>
+                <ThemedText style={styles.priceLabel}>สูงสุด</ThemedText>
+                <View style={styles.priceInputField}>
+                  <ThemedText style={styles.priceCurrency}>฿</ThemedText>
+                  <TextInput
+                    style={styles.priceTextInput}
+                    placeholder="500"
+                    placeholderTextColor="#B5A395"
+                    keyboardType="numeric"
+                    value={draftMaxPrice}
+                    onChangeText={setDraftMaxPrice}
+                  />
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.sheetActions}>
+              <TouchableOpacity style={styles.clearFilterBtn} onPress={resetFilters}>
+                <ThemedText style={styles.clearFilterBtnText}>ล้างตัวกรอง</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.applyFilterBtn} onPress={applyFilters}>
+                <ThemedText style={styles.applyFilterBtnText}>ใช้ตัวกรอง</ThemedText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   container: {
     flex: 1,
     backgroundColor: '#FAF3EA',
   },
   header: {
-    paddingVertical: 14,
+    paddingVertical: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E8DCCB',
+    backgroundColor: '#FAF3EA',
   },
-  menuButton: {
-    width: 34,
-    height: 34,
-    justifyContent: 'center',
+  headerLeft: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
-  menuIcon: {
-    fontSize: 18,
-    color: '#6B4A34',
+  logoBox: {
+    width: 42,
+    height: 42,
+    backgroundColor: '#F6E5D3',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  logoIcon: {
+    fontSize: 20,
   },
   titleWrap: {
-    alignItems: 'center',
-  },
-  headerEyebrow: {
-    fontSize: 11,
-    color: '#B4693E',
-    letterSpacing: 1,
-    marginBottom: 2,
+    justifyContent: 'center',
+    flexShrink: 1,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
-    color: '#4A3628',
+    color: '#3D2B1F',
+  },
+  userRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    gap: 6,
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: '#9C8776',
+    maxWidth: 110,
+  },
+  roleBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  roleBadgeAdmin: {
+    backgroundColor: '#F3D9B1',
+  },
+  roleBadgeUser: {
+    backgroundColor: '#E8DCCB',
+  },
+  roleBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#6B4A34',
   },
   profileButton: {
-    width: 34,
-    height: 34,
-    backgroundColor: '#6B4A34',
-    borderRadius: 17,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    overflow: 'visible',
+    backgroundColor: '#F6E5D3',
+    borderWidth: 2,
+  },
+  profileButtonUser: {
+    borderColor: '#B4693E',
+  },
+  profileButtonAdmin: {
+    borderColor: '#D9A441',
+  },
+  profileImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 21,
+  },
+  profileFallback: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 21,
+    backgroundColor: '#B4693E',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  profileIcon: {
-    fontSize: 16,
-    color: '#FAF3EA',
+  profileFallbackText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  profileCrown: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#D9A441',
+  },
+  profileCrownIcon: {
+    fontSize: 9,
   },
   searchContainer: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 8,
+    paddingTop: 14,
+    paddingBottom: 12,
     gap: 10,
     alignItems: 'center',
   },
@@ -362,11 +713,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E8DCCB',
-    borderRadius: 12,
-    paddingHorizontal: 12,
+    borderColor: '#EEE1D0',
+    borderRadius: 14,
+    paddingHorizontal: 14,
     alignItems: 'center',
-    height: 44,
+    height: 48,
   },
   searchIcon: {
     fontSize: 15,
@@ -379,19 +730,137 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#4A3628',
   },
+  clearButton: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#EFE2D2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 6,
+  },
+  clearIcon: {
+    fontSize: 11,
+    color: '#8C6A52',
+    fontWeight: '700',
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyIcon: {
+    fontSize: 34,
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#9C8776',
+    textAlign: 'center',
+  },
   filterButton: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#B4693E',
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  filterIcon: {
+    color: '#B4693E',
+    fontSize: 17,
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#B4693E',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 3,
+  },
+  filterBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  filterLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#B5A395',
+    letterSpacing: 0.5,
+    marginTop: 6,
+    marginBottom: 10,
+  },
+  categoryChipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 10,
+  },
+  categoryChip: {
+    paddingVertical: 9,
+    paddingHorizontal: 16,
+    borderRadius: 20,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E8DCCB',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
-  filterIcon: {
+  categoryChipActive: {
+    backgroundColor: '#B4693E',
+    borderColor: '#B4693E',
+  },
+  categoryChipText: {
+    fontSize: 13,
     color: '#6B4A34',
-    fontSize: 16,
+    fontWeight: '600',
+  },
+  categoryChipTextActive: {
+    color: '#FFFFFF',
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  priceInputWrap: {
+    flex: 1,
+  },
+  priceInput: {
+    marginBottom: 0,
+  },
+  priceLabel: {
+    fontSize: 12,
+    color: '#9C8776',
+    marginBottom: 6,
+  },
+  priceInputField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E8DCCB',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 46,
+  },
+  priceCurrency: {
+    fontSize: 14,
+    color: '#B4693E',
+    fontWeight: '700',
+    marginRight: 6,
+  },
+  priceTextInput: {
+    flex: 1,
+    height: '100%',
+    fontSize: 14,
+    color: '#3D2B1F',
   },
   addRow: {
     paddingHorizontal: 20,
@@ -453,20 +922,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  navActivePill: {
-    backgroundColor: '#F3E4D3',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 4,
-    marginBottom: 4,
-  },
   navIcon: {
     fontSize: 20,
     marginBottom: 4,
-    opacity: 0.55,
+    opacity: 0.5,
   },
   navIconActive: {
-    fontSize: 18,
+    fontSize: 20,
+    marginBottom: 4,
   },
   navText: {
     fontSize: 11,
@@ -476,6 +939,13 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#B4693E',
     fontWeight: '700',
+  },
+  navActiveDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#B4693E',
+    marginTop: 4,
   },
   
   // Style ของ Modal Pop-up
@@ -530,5 +1000,85 @@ const styles = StyleSheet.create({
   saveBtnText: {
     color: '#FFFFFF',
     fontWeight: '600',
+  },
+
+  // Style ของ Filter Bottom Sheet
+  filterOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  filterSheet: {
+    backgroundColor: '#FAF3EA',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 22,
+    paddingTop: 12,
+    paddingBottom: 30,
+  },
+  sheetHandle: {
+    width: 44,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#E0D3C0',
+    alignSelf: 'center',
+    marginBottom: 18,
+  },
+  sheetHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  sheetTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#3D2B1F',
+  },
+  sheetCloseButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sheetCloseIcon: {
+    fontSize: 13,
+    color: '#6B4A34',
+    fontWeight: '700',
+  },
+  sheetActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+  },
+  clearFilterBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E8DCCB',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  clearFilterBtnText: {
+    color: '#6B4A34',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  applyFilterBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#B4693E',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  applyFilterBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 14,
   },
 });
