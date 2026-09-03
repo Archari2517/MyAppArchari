@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -11,7 +12,6 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
 
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/context/auth-context';
@@ -50,14 +50,14 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FAF3EA" />
+      <StatusBar barStyle="dark-content" backgroundColor="#F2F6FB" />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={styles.content}>
           <View style={styles.logoBox}>
-            <ThemedText style={styles.logoIcon}>📖</ThemedText>
+            <ThemedText style={styles.logoIcon}>🚲</ThemedText>
           </View>
           <ThemedText style={styles.title}>MY APP Archari</ThemedText>
           <ThemedText style={styles.subtitle}>เข้าสู่ระบบเพื่อจัดการสินค้า</ThemedText>
@@ -67,7 +67,7 @@ export default function LoginScreen() {
             <TextInput
               style={styles.input}
               placeholder="เช่น admin หรือ user@email.com"
-              placeholderTextColor="#B5A395"
+              placeholderTextColor="#94A0AE"
               autoCapitalize="none"
               value={identifier}
               onChangeText={setIdentifier}
@@ -78,7 +78,7 @@ export default function LoginScreen() {
               <TextInput
                 style={styles.passwordInput}
                 placeholder="รหัสผ่าน"
-                placeholderTextColor="#B5A395"
+                placeholderTextColor="#94A0AE"
                 secureTextEntry={!showPassword}
                 value={password}
                 onChangeText={setPassword}
@@ -121,7 +121,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAF3EA',
+    backgroundColor: '#F2F6FB',
   },
   flex: {
     flex: 1,
@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 18,
-    backgroundColor: '#F6E5D3',
+    backgroundColor: '#FFE3C8',
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
@@ -147,12 +147,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#3D2B1F',
+    color: '#14171C',
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 13,
-    color: '#9C8776',
+    color: '#5B6472',
     textAlign: 'center',
     marginTop: 4,
     marginBottom: 32,
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 20,
-    shadowColor: '#6B4A34',
+    shadowColor: '#0B1220',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
     shadowRadius: 10,
@@ -170,33 +170,33 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#8C6A52',
+    color: '#3A4250',
     marginBottom: 6,
     marginTop: 10,
   },
   input: {
-    backgroundColor: '#FAF3EA',
+    backgroundColor: '#F2F6FB',
     borderRadius: 8,
     paddingHorizontal: 12,
     height: 46,
-    borderWidth: 1,
-    borderColor: '#E8DCCB',
-    color: '#4A3628',
+    borderWidth: 2,
+    borderColor: '#14171C',
+    color: '#14171C',
   },
   passwordRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FAF3EA',
+    backgroundColor: '#F2F6FB',
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E8DCCB',
+    borderWidth: 2,
+    borderColor: '#14171C',
     paddingRight: 6,
   },
   passwordInput: {
     flex: 1,
     paddingHorizontal: 12,
     height: 46,
-    color: '#4A3628',
+    color: '#14171C',
   },
   eyeButton: {
     padding: 8,
@@ -206,12 +206,12 @@ const styles = StyleSheet.create({
   },
   loginButton: {
     marginTop: 22,
-    backgroundColor: '#B4693E',
+    backgroundColor: '#FF6A13',
     height: 48,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#6B4A34',
+    shadowColor: '#0B1220',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.15,
     shadowRadius: 6,
@@ -232,10 +232,10 @@ const styles = StyleSheet.create({
   },
   registerLinkText: {
     fontSize: 13,
-    color: '#9C8776',
+    color: '#5B6472',
   },
   registerBold: {
-    color: '#B4693E',
+    color: '#FF6A13',
     fontWeight: '700',
   },
 });

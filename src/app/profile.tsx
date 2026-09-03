@@ -165,7 +165,7 @@ export default function ProfileScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#B4693E" />
+        <ActivityIndicator size="large" color="#FF6A13" />
       </View>
     );
   }
@@ -250,7 +250,7 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAF3EA' },
+  container: { flex: 1, backgroundColor: '#F2F6FB' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   headerBar: {
     paddingHorizontal: 20,
@@ -265,45 +265,45 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E8DCCB',
+    borderWidth: 2,
+    borderColor: '#14171C',
     gap: 6,
   },
-  backIcon: { fontSize: 16, fontWeight: '700', color: '#B4693E' },
-  backText: { fontSize: 14, fontWeight: '600', color: '#B4693E' },
+  backIcon: { fontSize: 16, fontWeight: '700', color: '#FF6A13' },
+  backText: { fontSize: 14, fontWeight: '600', color: '#FF6A13' },
   content: { padding: 24, paddingTop: 10, alignItems: 'center' },
   avatarWrapper: { marginBottom: 12 },
-  avatarImage: { width: 90, height: 90, borderRadius: 45, borderWidth: 2, borderColor: '#B4693E' },
+  avatarImage: { width: 90, height: 90, borderRadius: 45, borderWidth: 2, borderColor: '#FF6A13' },
   imageActionBox: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  actionBtn: { backgroundColor: '#B4693E', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
+  actionBtn: { backgroundColor: '#FF6A13', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
   actionBtnText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
-  actionBtnOutline: { borderWidth: 1, borderColor: '#B4693E', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
-  actionBtnOutlineText: { color: '#B4693E', fontSize: 12, fontWeight: '700' },
+  actionBtnOutline: { borderWidth: 2, borderColor: '#FF6A13', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
+  actionBtnOutlineText: { color: '#FF6A13', fontSize: 12, fontWeight: '700' },
   urlBox: { width: '100%', marginBottom: 16, gap: 8 },
-  saveUrlBtn: { backgroundColor: '#8C6A52', height: 40, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
-  roleBadge: { fontSize: 13, color: '#9C8776', marginBottom: 20 },
+  saveUrlBtn: { backgroundColor: '#3A4250', height: 40, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+  roleBadge: { fontSize: 13, color: '#5B6472', marginBottom: 20 },
   form: {
     width: '100%',
     backgroundColor: '#FFF',
     borderRadius: 16,
     padding: 20,
-    shadowColor: '#6B4A34',
+    shadowColor: '#0B1220',
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
   },
-  label: { fontSize: 12, fontWeight: '700', color: '#8C6A52', marginTop: 10, marginBottom: 4 },
+  label: { fontSize: 12, fontWeight: '700', color: '#3A4250', marginTop: 10, marginBottom: 4 },
   input: {
-    backgroundColor: '#FAF3EA',
+    backgroundColor: '#F2F6FB',
     borderRadius: 8,
     paddingHorizontal: 12,
     height: 44,
-    borderWidth: 1,
-    borderColor: '#E8DCCB',
-    color: '#4A3628',
+    borderWidth: 2,
+    borderColor: '#14171C',
+    color: '#14171C',
   },
   saveBtn: {
-    backgroundColor: '#B4693E',
+    backgroundColor: '#FF6A13',
     height: 46,
     borderRadius: 10,
     justifyContent: 'center',
@@ -313,12 +313,12 @@ const styles = StyleSheet.create({
   disabledBtn: { opacity: 0.7 },
   btnText: { color: '#FFF', fontWeight: '700' },
   logoutBtn: {
-    backgroundColor: '#FFEBEB',
+    backgroundColor: '#FFDEDE',
     height: 44,
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 12,
   },
-  logoutText: { color: '#E53935', fontWeight: '700' },
+  logoutText: { color: '#E5252F', fontWeight: '700' },
 });

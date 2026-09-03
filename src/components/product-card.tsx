@@ -1,14 +1,13 @@
-import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export interface Product {
   id: number;
-  book_title: string;
-  author: string;
+  bike_name: string;
+  brand: string;
   price: number;
   stock_qty: number;
   category: string;
-  cover_image: string;
+  image: string;
 }
 
 interface ProductCardProps {
@@ -33,21 +32,21 @@ export function ProductCard({
 
   return (
     <View style={styles.card}>
-      {/* ปุ่มหัวใจ (Wishlist) มุมขวาบน */}
-      <TouchableOpacity
-        style={styles.wishlistBtn}
-        onPress={() => onToggleWishlist?.(product)}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-      >
-        <Text style={[styles.wishlistIcon, isWishlisted && styles.wishlistIconActive]}>
-          {isWishlisted ? '♥' : '♡'}
-        </Text>
-      </TouchableOpacity>
+      {/* ปุ่มหัวใจ (Wishlist) มุมขวาบน — โชว์เฉพาะมุมมอง User เท่านั้น ไม่โชว์ในหน้า Admin */}
+      {!isAdminView && (
+        <TouchableOpacity
+          style={styles.wishlistBtn}
+          onPress={() => onToggleWishlist?.(product)}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          
+        </TouchableOpacity>
+      )}
 
       <View style={styles.topRow}>
-        {/* รูปภาพปกหนังสือ */}
+        {/* รูปภาพจักรยาน */}
         <Image
-          source={{ uri: product.cover_image }}
+          source={{ uri: product.image }}
           style={styles.coverImage}
           resizeMode="cover"
         />
@@ -55,10 +54,10 @@ export function ProductCard({
         {/* ข้อความและรายละเอียด */}
         <View style={styles.infoContainer}>
           <Text style={styles.author} numberOfLines={1}>
-            {product.author}
+            {product.brand}
           </Text>
           <Text style={styles.title} numberOfLines={2}>
-            {product.book_title}
+            {product.bike_name}
           </Text>
 
           <View style={styles.stockRow}>
@@ -126,7 +125,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 14,
     marginBottom: 16,
-    shadowColor: '#6B4A34',
+    shadowColor: '#0B1220',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
     shadowRadius: 10,
@@ -144,10 +143,10 @@ const styles = StyleSheet.create({
   },
   wishlistIcon: {
     fontSize: 18,
-    color: '#B5A395',
+    color: '#94A0AE',
   },
   wishlistIconActive: {
-    color: '#B4693E',
+    color: '#FF6A13',
   },
   topRow: {
     flexDirection: 'row',
@@ -156,7 +155,7 @@ const styles = StyleSheet.create({
     width: 84,
     height: 118,
     borderRadius: 12,
-    backgroundColor: '#FAF3EA',
+    backgroundColor: '#F2F6FB',
   },
   infoContainer: {
     flex: 1,
@@ -166,13 +165,13 @@ const styles = StyleSheet.create({
   },
   author: {
     fontSize: 13,
-    color: '#9C8776',
+    color: '#5B6472',
     marginBottom: 4,
   },
   title: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#3D2B1F',
+    color: '#14171C',
     marginBottom: 8,
     lineHeight: 21,
   },
@@ -185,12 +184,12 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#8FB996',
+    backgroundColor: '#16A34A',
     marginRight: 6,
   },
   stock: {
     fontSize: 12,
-    color: '#8C6A52',
+    color: '#3A4250',
     fontWeight: '600',
   },
   pillRow: {
@@ -200,17 +199,17 @@ const styles = StyleSheet.create({
   },
   categoryPill: {
     alignSelf: 'flex-start',
-    backgroundColor: '#F6E5D3',
+    backgroundColor: '#FFE3C8',
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 5,
-    borderWidth: 1,
-    borderColor: '#EFDDC4',
+    borderWidth: 1.5,
+    borderColor: '#FFC58A',
   },
   category: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#B4693E',
+    color: '#FF6A13',
   },
   bottomRow: {
     flexDirection: 'row',
@@ -221,8 +220,8 @@ const styles = StyleSheet.create({
   priceBox: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    borderWidth: 1.5,
-    borderColor: '#3D2B1F',
+    borderWidth: 2,
+    borderColor: '#14171C',
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -230,13 +229,13 @@ const styles = StyleSheet.create({
   currency: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#3D2B1F',
+    color: '#14171C',
     marginRight: 3,
   },
   price: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#3D2B1F',
+    color: '#14171C',
   },
   adminActions: {
     flexDirection: 'row',
@@ -250,13 +249,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cartSquareBtn: {
-    backgroundColor: '#F6C9AC',
+    backgroundColor: '#FFD9A8',
   },
   editSquareBtn: {
-    backgroundColor: '#E8DCCB',
+    backgroundColor: '#DCE6FF',
   },
   deleteSquareBtn: {
-    backgroundColor: '#FBE3E1',
+    backgroundColor: '#FFD9D9',
   },
   squareBtnIcon: {
     fontSize: 17,
